@@ -25,7 +25,6 @@ def read_data(fname):
 
     return exemplars
 
-
 ####################
 # Main program
 #
@@ -39,7 +38,7 @@ if len(sys.argv) != 3:
 print "Learning model..."
 solver = Solver()
 train_data = read_data(train_file)
-solver.train(train_data)
+#solver.train(train_data)
 
 print "Loading test data..."
 test_data = read_data(test_file)
