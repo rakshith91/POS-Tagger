@@ -34,8 +34,10 @@ def draw_edge(image, y_coordinates, color, thickness):
 
 # main program
 #
-(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
-
+#(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
+input_filename="mountain.jpg"
+output_filename="output.jpg"
+gt_row,gt_col=0,0
 # load in image 
 input_image = Image.open(input_filename)
 
@@ -43,9 +45,17 @@ input_image = Image.open(input_filename)
 edge_strength = edge_strength(input_image)
 imsave('edges.jpg', edge_strength)
 
+
 # You'll need to add code here to figure out the results! For now,
 # just create a horizontal centered line.
+
+vitterMap = []
+#Create a matrix with same number of values as edge_strength but all values set to 0
+
 ridge = [ edge_strength.shape[0]/2 ] * edge_strength.shape[1]
+
+for i in range(len(ridge)):
+    ridge[i]=i/2
 
 # output answer
 imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
