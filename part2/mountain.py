@@ -3,8 +3,9 @@
 # Mountain ridge finder
 # Based on skeleton code by D. Crandall, Oct 2016
 #
-
+# from __future__ import division
 from PIL import Image
+import numpy as np
 from numpy import *
 from scipy.ndimage import filters
 from scipy.misc import imsave
@@ -32,10 +33,42 @@ def draw_edge(image, y_coordinates, color, thickness):
             image.putpixel((x, t), color)
     return image
 
+#This method finds the coordinates of the ridge line
+# Formula implemented: p(s/w) = P(w/s) * P(s) / P(w)
+
+def findRedLine(edge_strength):
+    ridge = []
+
+    rowLst = []
+    for row in edge_strength:
+        rowLst.append(sum(row))
+    # print rowLst
+    colLst = []
+    for j in range(len(edge_strength[0])):
+        colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
+    print "col:: "+ str(len(edge_strength))
+    print "row:: "+str(len(edge_strength[0]))
+    lst = []
+    for j in range(len(edge_strength[0])):
+    # for j in range(200):
+        for i in range(len(edge_strength)):
+            # print i
+            lh = (edge_strength[i][j] / colLst[j])
+            h = (((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0))
+            # print(len(edge_strength),len(edge_strength)-i)
+            # print (lh,h)
+            # h =1
+            lst.append(lh*h)
+        ridge.append(lst.index(max(lst)))
+        lst = []
+
+    return ridge
 # main program
 #
-(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
-
+#(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
+input_filename="mountain9.jpg"
+output_filename="output.jpg"
+gt_row,gt_col=0,0
 # load in image 
 input_image = Image.open(input_filename)
 
@@ -43,9 +76,16 @@ input_image = Image.open(input_filename)
 edge_strength = edge_strength(input_image)
 imsave('edges.jpg', edge_strength)
 
+
 # You'll need to add code here to figure out the results! For now,
 # just create a horizontal centered line.
-ridge = [ edge_strength.shape[0]/2 ] * edge_strength.shape[1]
 
+vitterMap = []
+#Create a matrix with same number of values as edge_strength but all values set to 0
+
+
+
+ridge = findRedLine(edge_strength)
+# print ridge
 # output answer
 imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
