@@ -11,8 +11,30 @@ from scipy.ndimage import filters
 from scipy.misc import imsave
 import sys
 
+max_str = 255**2
+magic_mcmc_no = 5000
+# This function gets the best point for starting the mcmc
+def get_init_point(ridge):
+    min = 99999; # some high val
+    for i in range(len(ridge)-1):
+        if(ridge[i] < min ):
+            min = ridge[i]
+            index = i
+    return (index,min) #(x,y)
+
+def transition_Prob(x1,x2):
+    if (x1 < x2):
+        return x1/(x2 * 0.9)
+    else:
+        return x2/(x1 * 0.9)
+
+def emmission_Prob(strength):
+    val = (strength/ max_str)
+    if(strength == 0):
+        return 0.1
+    else:
+        return val
 # calculate "Edge strength map" of an image
-#
 def edge_strength(input_image):
     grayscale = array(input_image.convert('L'))
     filtered_y = zeros(grayscale.shape)
@@ -38,54 +60,72 @@ def draw_edge(image, y_coordinates, color, thickness):
 
 def findRedLine(edge_strength):
     ridge = []
-
-    rowLst = []
-    for row in edge_strength:
-        rowLst.append(sum(row))
-    # print rowLst
-    colLst = []
-    for j in range(len(edge_strength[0])):
-        colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
-    print "col:: "+ str(len(edge_strength))
-    print "row:: "+str(len(edge_strength[0]))
-    lst = []
-    for j in range(len(edge_strength[0])):
-    # for j in range(200):
-        for i in range(len(edge_strength)):
-            # print i
-            lh = (edge_strength[i][j] / colLst[j])
+    data = {}
+    for j in range(len(edge_strength[0])): #row
+    # for j in range(50):
+        lst = []
+        for i in range(len(edge_strength)): #col
+            lh = (edge_strength[i][j] / max_str)
             h = (((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0))
-            # print(len(edge_strength),len(edge_strength)-i)
-            # print (lh,h)
-            # h =1
             lst.append(lh*h)
         ridge.append(lst.index(max(lst)))
-        lst = []
-
     return ridge
-# main program
-#
+
+def plot_blue_line(edge_strength,ridge):
+    print "plot_blue_line"
+    init_point = get_init_point(ridge)
+    print init_point
+    sample = []
+    sample.append(ridge)
+    x = init_point[0] + 1
+    y = init_point[1]
+    sampleItr = 0
+    toggle = True
+    print ridge
+    for itr in range(magic_mcmc_no):
+        temp = list(sample[sampleItr])
+        lst = []
+        for i in range(len(edge_strength)): #col = height 
+            em = emmission_Prob(edge_strength[i][x])  
+            # em = (edge_strength[i][x] / max_str)*0.5
+            # em = 1
+            h = (((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0))
+            tr = transition_Prob(y,i) * 0.9
+            # print tr
+            lst.append(em*h*tr)
+        y = lst.index(max(lst))
+        temp[x] = y
+        print temp
+        sample.append(temp);
+        sampleItr +=1;
+        if(toggle):
+            x += 1
+        else:
+            x -=1
+        if(x == len(ridge) -1  or x == 0):
+            toggle = not toggle
+    return sample
+
+
+# main program - python mountain.py mountain.jpg new_output_file.jpg 0 0
 #(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
-input_filename="mountain9.jpg"
+input_filename="mountain7.jpg"
 output_filename="output.jpg"
 gt_row,gt_col=0,0
+
 # load in image 
 input_image = Image.open(input_filename)
-
 # compute edge strength mask
 edge_strength = edge_strength(input_image)
 imsave('edges.jpg', edge_strength)
 
-
-# You'll need to add code here to figure out the results! For now,
-# just create a horizontal centered line.
-
-vitterMap = []
-#Create a matrix with same number of values as edge_strength but all values set to 0
-
-
-
 ridge = findRedLine(edge_strength)
+
+sample = plot_blue_line(edge_strength,ridge);
+
+# imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
 # print ridge
 # output answer
-imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
+# imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
+imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
+
