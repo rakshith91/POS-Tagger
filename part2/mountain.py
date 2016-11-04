@@ -90,6 +90,7 @@ def plot_blue_line(edge_strength,ridge):
             # em = (edge_strength[i][x] / max_str)*0.5
             # em = 1
             h = (((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0))
+            #@todo : check if in the other direction if you are considering the point behind you
             tr = transition_Prob(y,i) * 0.9
             # print tr
             lst.append(em*h*tr)
@@ -104,6 +105,7 @@ def plot_blue_line(edge_strength,ridge):
             x -=1
         if(x == len(ridge) -1  or x == 0):
             toggle = not toggle
+    #@todo : average the sample
     return sample
 
 
