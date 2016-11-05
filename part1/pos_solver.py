@@ -12,7 +12,7 @@
 ####
 # Put your report here!!
 ####
-
+from copy import deepcopy
 import random
 import math
 
@@ -21,14 +21,17 @@ import math
 # that we've supplied.
 #
 class Solver:
+	#exemplars = self.read_data("bc.train")
 	# Calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
 	def posterior(self, sentence, label):
 		return 0
+
 	def train(self, data):
 		pass
 	#function taken from label.py .Author:	David Crandall
-	def read_data(self,fname):
+	@staticmethod
+	def read_data(fname):
 		exemplars = []
 		file = open(fname, 'r');
 		for line in file:
@@ -37,11 +40,45 @@ class Solver:
 
 		return exemplars
 
+	@staticmethod
+	def transitions(exemplars):
+		transitions={}
+		s1={}
+		s2={}
+		count=0
+		sentence_count=0
+		for tup in exemplars:
+			sentence_count+=1
+			if tup[1][0] in s1:
+				s1[tup[1][0]]+=1.0
+			else:
+				s1[tup[1][0]]=1.0
+			if tup[1][-1] in s2:
+				s2[tup[1][-1]]+=1.0
+			else:
+				s2[tup[1][-1]]=1.0
+			for i in range(len(tup[1])-1):
+				count+=1
+				if (tup[1][i] , tup[1][i+1]) in transitions:
+					transitions[(tup[1][i] , tup[1][i+1])]+=1.0
+				else:
+					transitions[(tup[1][i] , tup[1][i+1])]=1.0
+		for i in s1:
+			s1[i]=s1[i]/sentence_count
+		for i in transitions:
+			if i in s2:
+				transitions[i]=transitions[i]/(count-s2[i])
+			else:
+				transitions[i]=transitions[i]/(count)
+		#print count, sentence_count
+		return (transitions,s1)
+				
 	#calculates the total number of occurences for each word, 
 	#divides by total_word_count and stores 
 	#the probability in a dictionary
 	#returns p(w), p(s_i)
-	def priors(self, exemplars):
+	@staticmethod
+	def priors(exemplars):
 		total_word_count=0.0
 		word_occurences,pos_occurences={},{}
 		for tup in exemplars:
@@ -56,61 +93,79 @@ class Solver:
 					pos_occurences[pos]+=1
 				else:
 					pos_occurences[pos]=1
-#		for word in word_occurences:
-#			word_occurences[word]= word_occurences[word]/total_word_count
-#		for pos in pos_occurences:
-#			pos_occurences[pos]= pos_occurences[pos]/total_word_count
-		return (word_occurences, pos_occurences)
+		for pos in pos_occurences:
+			pos_occurences[pos]/=total_word_count
+		return (word_occurences, pos_occurences, total_word_count)
 
 	#calculates the likelihood for each word and pos
-	#returns p(w | s_i) for each s_i
-	def likelihood(self, exemplars, pos_occurences):
+	#returns h(w | s_i) for each s_i
+	@staticmethod
+	def likelihood(exemplars, pos_occurences, total_word_count):
 		likelihood={}
 		for tup in exemplars:
 			for word in range(len(tup[0])):
 				if (tup[0][word], tup[1][word]) in likelihood:
-					likelihood[(tup[0][word], tup[1][word])]+=1
+					likelihood[(tup[0][word], tup[1][word])]+=1.0
 				else:
-					likelihood[(tup[0][word], tup[1][word])]=1
+					likelihood[(tup[0][word], tup[1][word])]=1.0
 		for tup in likelihood:
-			likelihood[tup]= float(likelihood[tup])/pos_occurences[tup[1]]
+			#print likelihood[tup], pos_occurences[tup[1]]
+			likelihood[tup] /=pos_occurences[tup[1]]
+			likelihood[tup]/=total_word_count
 		return likelihood
 	
+	#calculates p(s_i|w_i)= p(w_i|s_i)*p(s_i)	
+	@staticmethod
+	def simple_posterior(word, pos, likelihood, pos_occurences):
+		return (math.log(likelihood[(word, pos)]*pos_occurences[pos]), pos)
+
 	#calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
 	def posterior(self, sentence, label):
 		return 0
-		pos_list=[]
-		word_occurences = priors[0]
-		pos_occurences = priors[1]
-		for pos in pos_occurences:
-			if word in likelihood:
-				pos_list.append((likelihood[word]*pos_occurences[pos] , pos))
-			else:
-				pos_list.append((float(1)/12, pos))
-		return pos_list
-
+	
 	# Functions for each algorithm.
 	def simplified(self, sentence):
-		exemplars= self.read_data("bc.train")
-		priors= self.priors(exemplars)
-		likelihood= self.likelihood(exemplars, priors[1])
+		exemplars= Solver.read_data("bc.train")
+		priors= Solver.priors(exemplars)
+		pos_occurences = priors[1]
+		likelihood = Solver.likelihood(exemplars, priors[1], priors[2])
 		pos_list=[]
-		val_list=[]
 		for word in sentence:
-			x=[]
-			for tup in likelihood:
-				if tup[0]==word:
-					x.append((tup[0],tup[1],likelihood[tup]))
-			if len(x)==0:
-				x.append((word,'noun' ,1.0/12 ))
-			x.sort(key=lambda tup:tup[2], reverse=True)
-			pos_list.append(x[0][1])
+			temp=[]
+			for pos in pos_occurences:
+				if (word,pos) in likelihood:
+					temp.append(Solver.simple_posterior(word, pos, likelihood, pos_occurences))
+			if not temp:
+				temp.append((1, 'noun'))
+			temp.sort(key=lambda tup:tup[0], reverse=True)
+			pos_list.append(temp[0][1])
 		return [ [pos_list], [[0] * len(sentence),] ]
 
 	def hmm(self, sentence):
-		print [ [ "noun" ] * len(sentence)], "hmm"
-		return [ [ [ "noun" ] * len(sentence)], [] ]
+		exemplars= Solver.read_data("bc.train")
+		tr = Solver.transitions(exemplars)	
+		priors= Solver.priors(exemplars)
+		pos_occurences = priors[1]
+		total_word_count = priors[2]
+		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
+		pos_list=[[(likelihood[(sentence[0],pos)]*tr[1][pos],pos,pos) if (sentence[0],pos) in likelihood else (0.00000000000001*tr[1][pos]/total_word_count,pos, pos )for pos in pos_occurences]]
+		for word in sentence[1:]:
+			previous= pos_list[-1]
+			current=[]
+			for pos in pos_occurences:
+				emission = likelihood[(word,pos)] if (word, pos) in likelihood else 0.000000001
+				best=[]
+				for i in range(len(previous)):
+					trans_prob = tr[0][(previous[i][1],pos)] if (previous[i][1],pos) in tr[0] else 0.00000000000000000001
+					best.append((emission*previous[i][0]*trans_prob,previous[i][1],pos))	
+				current.append(max(best))
+			pos_list.append(current)
+		path=[]
+		for word_list in pos_list:
+			best_val=max(word_list, key=lambda tup:tup[0])
+			path.append(best_val[2])
+		return [ [ path], [] ]
 
 	def complex(self, sentence):
 		return [ [ [ "noun" ] * len(sentence)], [[0] * len(sentence),] ]
