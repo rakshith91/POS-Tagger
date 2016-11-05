@@ -12,7 +12,7 @@ from scipy.misc import imsave
 import sys
 
 max_str = 255**2
-magic_mcmc_no = 50000
+magic_mcmc_no = 10000
 # This function gets the best point for starting the mcmc
 def get_init_point(ridge):
     min = 99999; # some high val
@@ -28,6 +28,8 @@ def get_init_point(ridge):
 def transition_Prob(x1,x2):
     # smooth = 2
     smooth = 2.8
+    x1 = 1 if x1==0 else x1
+    x2 = 1 if x2==0 else x2
     if (x1 < x2):
         return math.pow(x1/(x2 * 1.0),smooth)
     else:
@@ -114,8 +116,8 @@ def plot_blue_line(edge_strength,ridge):
             em = emmission_Prob(edge_strength[i][x],colLst[x])  
             # print (edge_strength[i][x],em)
             # em = 1
-            # h = ^3
-            h = pow((((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0)),3.5)
+            # h = ^3.5
+            h = pow((((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0)),3.8)
             tr = transition_Prob(y,i)
             if((x+1) == len(ridge) - 1  or (x+1) == 0):
                 trf = pow(transition_Prob(temp[x+1],i),2)
