@@ -15,6 +15,8 @@ max_str = 255**2
 magic_mcmc_no = 5000
 # This function gets the best point for starting the mcmc
 def get_init_point(ridge):
+    #@todo : This function could be replaced with return (ridge.index(min(ridge)) , min(ridge))
+    # This change doesnt affect functionality
     min = 99999; # some high val
     for i in range(len(ridge)-1):
         if(ridge[i] < min ):
@@ -31,7 +33,7 @@ def transition_Prob(x1,x2):
 def emmission_Prob(strength):
     val = (strength/ max_str)
     if(strength == 0):
-        return 0.1
+        return 0.1 #@todo(idea) : I think 0.1 is  a very big number as most of times val would be a fraction between 0 and 1
     else:
         return val
 # calculate "Edge strength map" of an image
@@ -83,6 +85,7 @@ def plot_blue_line(edge_strength,ridge):
     toggle = True
     print ridge
     for itr in range(magic_mcmc_no):
+        #@todo : what is the below line doing
         temp = list(sample[sampleItr])
         lst = []
         for i in range(len(edge_strength)): #col = height 
@@ -105,9 +108,17 @@ def plot_blue_line(edge_strength,ridge):
             x -=1
         if(x == len(ridge) -1  or x == 0):
             toggle = not toggle
-    #@todo : average the sample
     return sample
+    
+def findAvg(sample):
+    avgSample=[]
+    for i in range(len(sample[0])):
+        x=0
+        for j in range(len(sample)):
+            x+=sample[j][i]
+        avgSample.append(x/len(sample))
 
+    return avgSample
 
 # main program - python mountain.py mountain.jpg new_output_file.jpg 0 0
 #(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
@@ -124,10 +135,13 @@ imsave('edges.jpg', edge_strength)
 ridge = findRedLine(edge_strength)
 
 sample = plot_blue_line(edge_strength,ridge);
-
+avgSample = findAvg(sample)
 # imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
 # print ridge
 # output answer
 # imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
-imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
+imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (0, 0, 255), 5))
+
+#@todo: The below is red line is drawn using the average sample 
+imsave(output_filename, draw_edge(input_image, avgSample, (255, 0, 0), 5))
 
