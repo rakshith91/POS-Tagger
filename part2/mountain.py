@@ -28,8 +28,9 @@ def get_init_point(ridge):
 def transition_Prob(sx1,sx2,es1=0,es2=0):
     smooth = 2.8
     smooth_prop = 1.0
-    sx1 = 1 if sx1==0 else sx1
-    sx2 = 1 if sx2==0 else sx2
+    if sx1==0 or sx2 ==0:
+        sx1+=1
+        sx2 += 1
     proportional = 1.0
     # if(es1 == 0 or es2 ==0):
     #     return 0.00001
@@ -152,20 +153,75 @@ def plot_blue_line(edge_strength,ridge):
             #sample.append(temp);
     return sample
 
+def plot_green_line(edge_strength, ridge,gt_row,gt_col):
+    print "plot_green_line"
+
+    # print init_point
+    sample = []
+    sample.append(ridge)
+    x = gt_row  # index of the sx value in ridge  282
+    y = gt_col  # actual sx value 32
+    # x = 45
+    # y = 160
+    sampleItr = 0
+    toggle = True
+    # print ridge
+    colLst = []
+    for j in range(len(edge_strength[0])):
+        colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
+    # print colLst
+    for itr in range(magic_mcmc_no):
+        if (toggle):
+            x += 1
+            # tx = x -1
+        else:
+            x -= 1
+            # tx = x +1
+        temp = list(sample[sampleItr])
+        lst = []
+
+        for i in range(len(edge_strength)):  # col = height
+
+            em = emmission_Prob(edge_strength[i][x], colLst[x])
+            # print (edge_strength[i][x],em)
+            # em = 1
+            # h = ^3.5
+            h = pow((((len(edge_strength) - i) * 0.9) / (len(edge_strength) * 1.0)), 4.6)
+            # tr = transition_Prob(y,i,edge_strength[y][tx],edge_strength[i][x])
+            tr = transition_Prob(y, i)
+            if ((x + 1) == len(ridge) - 1 or (x + 1) == 0):
+                trf = pow(transition_Prob(temp[x + 1], i), 2)
+            else:
+                trf = 1
+            # trf = 1
+            # print tr
+            lst.append(em * h * tr * trf)
+
+            # break
+        # break
+        # print "Before:: "+ str(y)
+        y = lst.index(max(lst))
+        # print "Now:: "+ str(y)
+        temp[x] = y
+        # print temp
+        sample.append(temp);
+        sampleItr += 1;
+        if (x == len(ridge) - 1 or x == 0):
+            toggle = not toggle
+            # sample.append(temp);
+    return sample
+
 
 # main program - python mountain.py mountain.jpg new_output_file.jpg 0 0
 #(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
-# file = "2";
 file = '1'
-# print file
-# quit()
 
 while True:
     if file=='10':
         break
     input_filename="mountain"+file+".jpg"
     output_filename="output"+file+".jpg"
-    gt_row,gt_col=0,0
+    gt_row,gt_col=49,50
     print input_filename
     # load in image
     input_image = Image.open(input_filename)
@@ -174,9 +230,13 @@ while True:
     imsave('edges.jpg', edge_strength_value)
 
     ridge = findRedLine(edge_strength_value)
-
+    imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
     # New function Added
     sample = plot_blue_line(edge_strength_value,ridge);
+    imsave(output_filename, draw_edge(input_image, sample[-1], (0, 0, 255), 5))
+
+    sample = plot_green_line(edge_strength_value, ridge,gt_row,gt_col);
+    imsave(output_filename, draw_edge(input_image, sample[-1], (0, 255, 0), 5))
 
     # imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
     # print ridge
@@ -185,5 +245,5 @@ while True:
 
     # imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
     #imsave(output_filename, draw_edge(input_image, average_sample(sample), (255, 0, 0), 5))
-    imsave(output_filename, draw_edge(input_image, sample[-1], (255, 0, 0), 5))
+
     file = str(int(file) + 1)
