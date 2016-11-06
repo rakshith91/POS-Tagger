@@ -62,11 +62,12 @@ import math
 class Solver:
 	
 	train_vals = 0
-	posteriors=[]
+	posteriors=0
 	# Calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
 	def posterior(self, sentence, label):
-		return 0
+		
+		return Solver.posteriors
 	
 	def train(self, data):	
 		if Solver.train_vals!=0:
@@ -188,8 +189,8 @@ class Solver:
 
 	#calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
-	def posterior(self, sentence, label):
-		return 0
+	#def posterior(self, sentence, label):
+	#	return 0
 	
 	# Functions for each algorithm.
 	def simplified(self, sentence):
@@ -206,6 +207,7 @@ class Solver:
 			temp.sort(key=lambda tup:tup[0], reverse=True)	
 			pos_list.append(temp[0][1])
 			marginals.append(sum(zip(*temp)[0]))
+		Solver.posteriors= sum(marginals)
 		#print "hi", len(pos_list) , len(Solver.posteriors), Solver.posteriors
 		return [ [pos_list], [marginals] ]
 
