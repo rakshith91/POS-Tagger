@@ -25,15 +25,23 @@ def get_init_point(ridge):
 
 # MCMC Transistion Probablitiy
 # Not perfect
-def transition_Prob(x1,x2):
-    # smooth = 2
+def transition_Prob(sx1,sx2,es1=0,es2=0):
     smooth = 2.8
-    x1 = 1 if x1==0 else x1
-    x2 = 1 if x2==0 else x2
-    if (x1 < x2):
-        return math.pow(x1/(x2 * 1.0),smooth)
+    smooth_prop = 1.0
+    sx1 = 1 if sx1==0 else sx1
+    sx2 = 1 if sx2==0 else sx2
+    proportional = 1.0
+    # if(es1 == 0 or es2 ==0):
+    #     return 0.00001
+    # if (es1 < es2):
+    #     proportional = (math.pow(es1/(es2 * 1.0),smooth_prop )) *1000
+    # else:
+    #     proportional =  (math.pow(es2/(es1 * 1.0),smooth_prop )) * 1000
+
+    if (sx1 < sx2):
+        return math.pow(sx1/(sx2 * 1.0),smooth)
     else:
-        return math.pow(x2/(x1 * 1.0),smooth)
+        return math.pow(sx2/(sx1 * 1.0),smooth)
 
 # Emission probability
 # Given 0.1 prob if the strenght is zero so as to avoid complete eliminate of samples
@@ -84,22 +92,22 @@ def findRedLine(edge_strength):
 def average_sample(sample):
     colLst = []
     for j in range(len(sample[0])):
-        colLst.append(sum([sample[i][j] for i in range(len(sample))])/magic_mcmc_no) #col
+        colLst.append(sum([sample[i][j] for i in range(len(sample))])/len(sample)) #col
     return colLst
 
 def plot_blue_line(edge_strength,ridge):
     print "plot_blue_line"
     init_point = get_init_point(ridge)
-    print init_point
+    #print init_point
     sample = []
     sample.append(ridge)
-    x = init_point[0] -1
-    y = init_point[1]
+    x = init_point[0] - 1  # index of the sx value in ridge
+    y = init_point[1] # actual sx value
     # x = 45
     # y = 160
     sampleItr = 0
     toggle = True
-    print ridge
+    #print ridge
     colLst = []
     for j in range(len(edge_strength[0])):
         colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
@@ -107,8 +115,10 @@ def plot_blue_line(edge_strength,ridge):
     for itr in range(magic_mcmc_no):
         if(toggle):
             x += 1
+            #tx = x -1
         else:
             x -=1
+            #tx = x +1
         temp = list(sample[sampleItr])
         lst = []
 
@@ -117,15 +127,19 @@ def plot_blue_line(edge_strength,ridge):
             # print (edge_strength[i][x],em)
             # em = 1
             # h = ^3.5
-            h = pow((((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0)),3.8)
-            tr = transition_Prob(y,i)
+            h = pow((((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0)), 4.6)
+            #tr = transition_Prob(y,i,edge_strength[y][tx],edge_strength[i][x])
+            tr = transition_Prob(y, i)
             if((x+1) == len(ridge) - 1  or (x+1) == 0):
                 trf = pow(transition_Prob(temp[x+1],i),2)
-            else: 
+            else:
                 trf = 1
-            # trf = 1
+            #trf = 1
             # print tr
             lst.append(em*h*tr*trf)
+
+            #break
+        #break
         # print "Before:: "+ str(y)
         y = lst.index(max(lst))
         # print "Now:: "+ str(y)
@@ -135,34 +149,41 @@ def plot_blue_line(edge_strength,ridge):
         sampleItr +=1;        
         if(x == len(ridge) - 1  or x == 0):
             toggle = not toggle
+            #sample.append(temp);
     return sample
 
 
 # main program - python mountain.py mountain.jpg new_output_file.jpg 0 0
 #(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
 # file = "2";
-file = sys.argv[1]
+file = '1'
 # print file
 # quit()
-input_filename="mountain"+file+".jpg"
-output_filename="output"+file+".jpg"
-gt_row,gt_col=0,0
 
-# load in image 
-input_image = Image.open(input_filename)
-# compute edge strength mask
-edge_strength = edge_strength(input_image)
-imsave('edges.jpg', edge_strength)
+while True:
+    if file=='10':
+        break
+    input_filename="mountain"+file+".jpg"
+    output_filename="output"+file+".jpg"
+    gt_row,gt_col=0,0
+    print input_filename
+    # load in image
+    input_image = Image.open(input_filename)
+    # compute edge strength mask
+    edge_strength_value = edge_strength(input_image)
+    imsave('edges.jpg', edge_strength_value)
 
-ridge = findRedLine(edge_strength)
+    ridge = findRedLine(edge_strength_value)
 
-# New function Added
-sample = plot_blue_line(edge_strength,ridge);
+    # New function Added
+    sample = plot_blue_line(edge_strength_value,ridge);
 
-# imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
-# print ridge
-# output answer
-# imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
+    # imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
+    # print ridge
+    # output answer
+    # imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
 
-# imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
-imsave(output_filename, draw_edge(input_image, average_sample(sample), (255, 0, 0), 5))
+    # imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
+    #imsave(output_filename, draw_edge(input_image, average_sample(sample), (255, 0, 0), 5))
+    imsave(output_filename, draw_edge(input_image, sample[-1], (255, 0, 0), 5))
+    file = str(int(file) + 1)
