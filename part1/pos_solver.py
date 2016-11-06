@@ -21,15 +21,26 @@ import math
 # that we've supplied.
 #
 class Solver:
+	
+	train_vals = 0
 	#exemplars = self.read_data("bc.train")
 	# Calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
 	def posterior(self, sentence, label):
 		return 0
-
-	def train(self, data):
-		
-		pass
+	
+	def train(self, data):	
+		if Solver.train_vals!=0:
+			return Solver.train_vals
+		exemplars= Solver.read_data(data)
+		tr = Solver.transitions(exemplars)
+		second_tr = tr[2]	
+		priors= Solver.priors(exemplars)
+		pos_occurences = priors[1]
+		total_word_count = priors[2]
+		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
+		Solver.train_vals = (exemplars, tr, second_tr, priors, pos_occurences, total_word_count, likelihood) 
+		return Solver.train_vals
 	#function taken from label.py .Author:	David Crandall
 	@staticmethod
 	def read_data(fname):
@@ -149,10 +160,12 @@ class Solver:
 	
 	# Functions for each algorithm.
 	def simplified(self, sentence):
-		exemplars= Solver.read_data("bc.train")
-		priors= Solver.priors(exemplars)
-		pos_occurences = priors[1]
-		likelihood = Solver.likelihood(exemplars, priors[1], priors[2])
+		#return [[['noun']*len(sentence)],[[0]*len(sentence)]]
+		exemplars, tr, second_tr, priors, pos_occurences, total_word_count, likelihood = self.train('bc.train')
+#		exemplars= Solver.read_data("bc.train")
+#		priors= Solver.priors(exemplars)
+#		pos_occurences = priors[1]
+#		likelihood = Solver.likelihood(exemplars, priors[1], priors[2])
 		pos_list=[]
 		for word in sentence:
 			temp=[]
@@ -166,13 +179,18 @@ class Solver:
 		return [ [pos_list], [[0] * len(sentence),] ]
 
 	def hmm(self, sentence):
-		exemplars= Solver.read_data("bc.train")
-		tr = Solver.transitions(exemplars)	
-		priors= Solver.priors(exemplars)
-		pos_occurences = priors[1]
-		total_word_count = priors[2]
-		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
+		#return [[['noun']*len(sentence)],[]]
+		print sentence, len(sentence)
+		exemplars, tr, second_tr, priors, pos_occurences, total_word_count, likelihood = self.train('bc.train')
+#		exemplars= Solver.read_data("bc.train")
+#		tr = Solver.transitions(exemplars)	
+#		priors= Solver.priors(exemplars)
+#		pos_occurences = priors[1]
+#		total_word_count = priors[2]
+#		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
 		pos_list=[[(likelihood[(sentence[0],pos)]*tr[1][pos],pos,pos) if (sentence[0],pos) in likelihood else (0.00000000000001*tr[1][pos]/total_word_count,pos, pos )for pos in pos_occurences]]
+		if len(sentence)==1:
+			return [[[max(pos_list[0])[2]]], []]
 		for word in sentence[1:]:
 			previous= pos_list[-1]
 			current=[]
@@ -194,44 +212,54 @@ class Solver:
 		return [ [ path], [] ]
 
 	def complex(self, sentence):
-		exemplars= Solver.read_data("bc.train")
-		tr = Solver.transitions(exemplars)
-		second_tr = tr[2]
-		#print tr[0], "tr"	
-		priors= Solver.priors(exemplars)
-		pos_occurences = priors[1]
-		total_word_count = priors[2]
-		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
+		#return [[['noun']*len(sentence)],[[0]*len(sentence)]]
+		exemplars, tr, second_tr, priors, pos_occurences, total_word_count, likelihood = self.train('bc.train')
+#		exemplars= Solver.read_data("bc.train")
+#		tr = Solver.transitions(exemplars)
+#		second_tr = tr[2]
+#		#print tr[0], "tr"	
+#		priors= Solver.priors(exemplars)
+#		pos_occurences = priors[1]
+#		total_word_count = priors[2]
+#		likelihood = Solver.likelihood(exemplars, pos_occurences, total_word_count)
+		print sentence, len(sentence)
 		pos_list=[[(likelihood[(sentence[0],pos)]*tr[1][pos],pos) if (sentence[0],pos) in likelihood else (0.00000000000001*tr[1][pos]/total_word_count,pos)for pos in pos_occurences]]
 		second=[]
-	
-		prev = pos_list[-1]
-		for pos in pos_occurences:
-			emission = likelihood[(sentence[1],pos)] if (sentence[1], pos) in likelihood else 0.000000001
-			
-			for i in range(len(prev)):
-				trans_prob = tr[(prev[i][1],pos)] if (prev[i][1],pos) in tr else 0.00000000000000000001
-				#second_trans_prob = second_tr[(second_prev[i][1],pos)] if (second_prev[i][1],pos) in tr else 0.00000000000000000001
-				second.append((prev[i][0]*trans_prob*emission,pos))
-		pos_list.append(second)	
-		second_prev=pos_list[-2]
-		for word in sentence[2:]:
-			current=[]
+
+		if len(sentence)==1:
+			#print [[max(pos_list[0])[1]], [[0]*len(sentence)]]
+			return [[[max(pos_list[0])[1]]], [[0]*len(sentence)]]
+		else:
+			prev = pos_list[-1]
 			for pos in pos_occurences:
-				emission = likelihood[(word,pos)] if (word, pos) in likelihood else 0.000000001
+				#print len(sentence)
+				#print sentence[1], pos, #likelihood[(sentence[1],pos)]
+				#if len(sentence)>1:
+				emission = likelihood[(sentence[1],pos)] if (sentence[1], pos) in likelihood else 0.000000001
+			
 				for i in range(len(prev)):
 					trans_prob = tr[(prev[i][1],pos)] if (prev[i][1],pos) in tr else 0.00000000000000000001
-				for i in range(len(second_prev)):
-					second_trans_prob = second_tr[(second_prev[i][1],pos)] if (second_prev[i][1],pos) in tr else 0.00000000000000000001
-					#print len(second_prev), len(prev)
-					current.append((prev[i][0]*trans_prob*second_trans_prob*emission,pos))
-			#print len(current)
-			pos_list.append(current)	
-		#print len(pos_list), len(sentence)
-		ls = zip(*(map(max, pos_list)))[1]
-		print ls
-		mp = zip(*(map(max, pos_list)))[0]
-		return [ [ ls], [mp] ]
+					#second_trans_prob = second_tr[(second_prev[i][1],pos)] if (second_prev[i][1],pos) in tr else 0.00000000000000000001
+					second.append((prev[i][0]*trans_prob*emission,pos))
+			pos_list.append(second)	
+			second_prev=pos_list[-2]
+			for word in sentence[2:]:
+				current=[]
+				for pos in pos_occurences:
+					emission = likelihood[(word,pos)] if (word, pos) in likelihood else 0.000000001
+					for i in range(len(prev)):
+						trans_prob = tr[(prev[i][1],pos)] if (prev[i][1],pos) in tr else 0.00000000000000000001
+					for i in range(len(second_prev)):
+						second_trans_prob = second_tr[(second_prev[i][1],pos)] if (second_prev[i][1],pos) in tr else 0.00000000000000000001
+						#print len(second_prev), len(prev)
+						current.append((prev[i][0]*trans_prob*second_trans_prob*emission,pos))
+				#print len(current)
+				pos_list.append(current)	
+			#print len(pos_list), len(sentence)
+			ls = zip(*(map(max, pos_list)))[1]
+			print ls
+			mp = zip(*(map(max, pos_list)))[0]
+			return [ [ ls], [mp] ]
 
 
 	# This solve() method is called by label.py, so you should keep the interface the
