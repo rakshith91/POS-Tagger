@@ -4,6 +4,43 @@
 # Based on skeleton code by D. Crandall, Oct 2016
 #
 # from __future__ import division
+
+
+"""
+NOTE:- In some images the red,blue and green line overlap on each other and ultimately one of them is clearly visible to naked eye.
+(1) Problem Formulation:
+    This problem is formulated as a hidden markov model where we have few hidden variables about which we need to find out using some
+    observed variables . Here the hidden variables are the row values s_x where x=[1,2,3,4,...m]. And observed values are the image
+    gradient vectors w_1,w_2,....w_m.
+    We need to compute P(s_i/w_i)
+(2) How our program works:
+    We have implemented three approaches:-
+    1. In this approach we assume that every s_i value depends on only one w_i value i.e., it depends on the column vector it is present in.
+        So, we have to find P(s_i/w_i) = P(w_i/s_i) * P(s_i) / P(w_i). This is equivalent to picking up a cell in every column which has
+        maximum gradient value in that particular column.
+    2. In the second approach we have used MCMC to generate samples. We have used the output ridge line from the above method as input(first sample)
+        to this second approach. We have taken first sample and select the s_i value in it which corresponds to highest point of our
+        current sample ridge line. Assuming that the rest of all s_x values are correct we try to find the best value for s_i.
+        We do this by calculating a combination of transition and emission probabilites for every cell in that column and find the best
+        value in that column. Thus we find the best value for that column and move to the next column and do the same for the column and so on.
+        Once we are done with adjusting  s_x values for all the columns we consider that as our new sample. In this way we generate
+        a lot of samples and at the end choose the best sample out of it.
+    3.  In the previous section we used to start with a random initial point choosen from the first ridge line.
+        But here we have some human input. So, we consider the s_i value situated in the next column as our initial point and try to
+        start generating samples from there. As now we surely know a point which is on the ridge line, we give higher weights for the
+        transition probabilities as we know that the next point would be close to the previous point and so on.
+
+3) Problems we faced:
+    1. Coming up with a good combination of transmission and emission probabilites was a bit of challenge. And another challenge we faced was when
+    there are some other objects in the image which closely resemble a mountain range, like a chain of trees. In such cases the pixels on the
+    trees were being considered into the ridge line as tree pixels have higher gradient and so higher emission probabilities. To counter this
+    issue we have included a heuristic height factor which gives higher heuristic value for points which are on higher altitudes when compared
+    to points on lower heights. As mountains tend to be on higher heights than trees mountain range was given more heuristic value than trees
+    below it.
+    2. Another challenge was to select best ridge line out of multiple samples generated. We have decided to go with the last sample as it
+        was giving better results.
+
+"""
 from PIL import Image
 import numpy as np
 from numpy import *
@@ -16,7 +53,7 @@ magic_mcmc_no = 10000
 # This function gets the best point for starting the mcmc
 def get_init_point(ridge):
     min = 99999; # some high val
-    
+
     for i in range(len(ridge)-1):
         if(ridge[i] < min ):
             min = ridge[i]
@@ -24,25 +61,17 @@ def get_init_point(ridge):
     return (index,min) #(x,y)
 
 # MCMC Transistion Probablitiy
-# Not perfect
-def transition_Prob(sx1,sx2,es1=0,es2=0):
-    smooth = 2.8
-    smooth_prop = 1.0
+def transition_Prob(sx1,sx2,smooth=2.8):
     if sx1==0 or sx2 ==0:
         sx1+=1
         sx2 += 1
-    proportional = 1.0
-    # if(es1 == 0 or es2 ==0):
-    #     return 0.00001
-    # if (es1 < es2):
-    #     proportional = (math.pow(es1/(es2 * 1.0),smooth_prop )) *1000
-    # else:
-    #     proportional =  (math.pow(es2/(es1 * 1.0),smooth_prop )) * 1000
 
     if (sx1 < sx2):
         return math.pow(sx1/(sx2 * 1.0),smooth)
     else:
         return math.pow(sx2/(sx1 * 1.0),smooth)
+
+
 
 # Emission probability
 # Given 0.1 prob if the strenght is zero so as to avoid complete eliminate of samples
@@ -53,6 +82,7 @@ def emmission_Prob(strength,max_val):
         return smooth
     else:
         return val
+
 # calculate "Edge strength map" of an image
 def edge_strength(input_image):
     grayscale = array(input_image.convert('L'))
@@ -74,9 +104,9 @@ def draw_edge(image, y_coordinates, color, thickness):
             image.putpixel((x, t), color)
     return image
 
+
 #This method finds the coordinates of the ridge line
 # Formula implemented: p(s/w) = P(w/s) * P(s) / P(w)
-
 def findRedLine(edge_strength):
     ridge = []
     data = {}
@@ -90,160 +120,106 @@ def findRedLine(edge_strength):
         ridge.append(lst.index(max(lst)))
     return ridge
 
-def average_sample(sample):
-    colLst = []
-    for j in range(len(sample[0])):
-        colLst.append(sum([sample[i][j] for i in range(len(sample))])/len(sample)) #col
-    return colLst
+# def average_sample(sample):
+#     colLst = []
+#     for j in range(len(sample[0])):
+#         colLst.append(sum([sample[i][j] for i in range(len(sample))])/len(sample)) #col
+#     return colLst
 
+#This method returns the samples for drawing blue ridge line
 def plot_blue_line(edge_strength,ridge):
-    print "plot_blue_line"
     init_point = get_init_point(ridge)
-    #print init_point
     sample = []
     sample.append(ridge)
     x = init_point[0] - 1  # index of the sx value in ridge
     y = init_point[1] # actual sx value
-    # x = 45
-    # y = 160
     sampleItr = 0
     toggle = True
-    #print ridge
     colLst = []
     for j in range(len(edge_strength[0])):
         colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
-    # print colLst
     for itr in range(magic_mcmc_no):
         if(toggle):
             x += 1
-            #tx = x -1
         else:
             x -=1
-            #tx = x +1
         temp = list(sample[sampleItr])
         lst = []
 
-        for i in range(len(edge_strength)): #col = height 
-            em = emmission_Prob(edge_strength[i][x],colLst[x])  
-            # print (edge_strength[i][x],em)
-            # em = 1
-            # h = ^3.5
+        for i in range(len(edge_strength)): #col = height
+            em = emmission_Prob(edge_strength[i][x],colLst[x])
             h = pow((((len(edge_strength)-i)*0.9)/(len(edge_strength)*1.0)), 4.6)
-            #tr = transition_Prob(y,i,edge_strength[y][tx],edge_strength[i][x])
             tr = transition_Prob(y, i)
             if((x+1) == len(ridge) - 1  or (x+1) == 0):
                 trf = pow(transition_Prob(temp[x+1],i),2)
             else:
                 trf = 1
-            #trf = 1
-            # print tr
             lst.append(em*h*tr*trf)
 
-            #break
-        #break
-        # print "Before:: "+ str(y)
         y = lst.index(max(lst))
-        # print "Now:: "+ str(y)
         temp[x] = y
-        # print temp
         sample.append(temp);
-        sampleItr +=1;        
+        sampleItr +=1;
         if(x == len(ridge) - 1  or x == 0):
             toggle = not toggle
-            #sample.append(temp);
     return sample
 
+#This method returns the samples for drawing red ridge line
 def plot_green_line(edge_strength, ridge,gt_row,gt_col):
-    print "plot_green_line"
-
-    # print init_point
     sample = []
     sample.append(ridge)
     x = gt_row  # index of the sx value in ridge  282
     y = gt_col  # actual sx value 32
-    # x = 45
-    # y = 160
     sampleItr = 0
     toggle = True
-    # print ridge
     colLst = []
     for j in range(len(edge_strength[0])):
         colLst.append(sum([edge_strength[i][j] for i in range(len(edge_strength))]))
-    # print colLst
     for itr in range(magic_mcmc_no):
         if (toggle):
             x += 1
-            # tx = x -1
         else:
             x -= 1
-            # tx = x +1
         temp = list(sample[sampleItr])
         lst = []
 
         for i in range(len(edge_strength)):  # col = height
 
             em = emmission_Prob(edge_strength[i][x], colLst[x])
-            # print (edge_strength[i][x],em)
-            # em = 1
-            # h = ^3.5
             h = pow((((len(edge_strength) - i) * 0.9) / (len(edge_strength) * 1.0)), 4.6)
-            # tr = transition_Prob(y,i,edge_strength[y][tx],edge_strength[i][x])
-            tr = transition_Prob(y, i)
+            tr = transition_Prob(y, i,5)
             if ((x + 1) == len(ridge) - 1 or (x + 1) == 0):
-                trf = pow(transition_Prob(temp[x + 1], i), 2)
+                trf = pow(transition_Prob(temp[x + 1], i,5), 2)
             else:
                 trf = 1
-            # trf = 1
-            # print tr
             lst.append(em * h * tr * trf)
 
-            # break
-        # break
-        # print "Before:: "+ str(y)
         y = lst.index(max(lst))
-        # print "Now:: "+ str(y)
         temp[x] = y
-        # print temp
         sample.append(temp);
         sampleItr += 1;
         if (x == len(ridge) - 1 or x == 0):
             toggle = not toggle
-            # sample.append(temp);
     return sample
 
 
 # main program - python mountain.py mountain.jpg new_output_file.jpg 0 0
-#(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
-file = '1'
+(input_filename, output_filename, gt_row, gt_col) = sys.argv[1:]
 
-while True:
-    if file=='10':
-        break
-    input_filename="mountain"+file+".jpg"
-    output_filename="output"+file+".jpg"
-    gt_row,gt_col=49,50
-    print input_filename
-    # load in image
-    input_image = Image.open(input_filename)
-    # compute edge strength mask
-    edge_strength_value = edge_strength(input_image)
-    imsave('edges.jpg', edge_strength_value)
 
-    ridge = findRedLine(edge_strength_value)
-    imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
-    # New function Added
-    sample = plot_blue_line(edge_strength_value,ridge);
-    imsave(output_filename, draw_edge(input_image, sample[-1], (0, 0, 255), 5))
+print input_filename
+# load in image
+input_image = Image.open(input_filename)
+# compute edge strength mask
+edge_strength_value = edge_strength(input_image)
+imsave('edges.jpg', edge_strength_value)
 
-    sample = plot_green_line(edge_strength_value, ridge,gt_row,gt_col);
-    imsave(output_filename, draw_edge(input_image, sample[-1], (0, 255, 0), 5))
+ridge = findRedLine(edge_strength_value)
+imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
+# New function Added
+sample = plot_blue_line(edge_strength_value,ridge);
+imsave(output_filename, draw_edge(input_image, sample[-1], (0, 0, 255), 5))
 
-    # imsave("Test.jpg", draw_edge(input_image,[169,150] , (0, 0, 255), 5))
-    # print ridge
-    # output answer
-    # imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
+sample = plot_green_line(edge_strength_value, ridge,gt_row,gt_col);
+imsave(output_filename, draw_edge(input_image, sample[-1], (0, 255, 0), 5))
 
-    # imsave(output_filename, draw_edge(input_image, sample[len(sample) - 1], (255, 0, 0), 5))
-    #imsave(output_filename, draw_edge(input_image, average_sample(sample), (255, 0, 0), 5))
-
-    file = str(int(file) + 1)
