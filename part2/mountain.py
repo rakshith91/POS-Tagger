@@ -12,11 +12,14 @@ NOTE:- In some images the red,blue and green line overlap on each other and ulti
     This problem is formulated as a hidden markov model where we have few hidden variables about which we need to find out using some
     observed variables . Here the hidden variables are the row values s_x where x=[1,2,3,4,...m]. And observed values are the image
     gradient vectors w_1,w_2,....w_m.
-    We need to compute P(s_i/w_i)
+    We need to compute P(s_i|w_i)
+    Note: Denominators gets cancel as this problem deals with comparision between points on the image 
+    Emission prob -  strength of point - P(w_i|s_i)
+    Transition prob - closeness of the current point to the previous point - P(s_(i-1)|s_i). P(s_i|s_(i-1),w_i) = P(s_(i-1)|s_i) * P(w_i|s_i) * P(s_i)
 (2) How our program works:
     We have implemented three approaches:-
     1. In this approach we assume that every s_i value depends on only one w_i value i.e., it depends on the column vector it is present in.
-        So, we have to find P(s_i/w_i) = P(w_i/s_i) * P(s_i) / P(w_i). This is equivalent to picking up a cell in every column which has
+        So, we have to find P(s_i|w_i) = P(w_i|s_i) * P(s_i) / P(w_i). This is equivalent to picking up a cell in every column which has
         maximum gradient value in that particular column.
     2. In the second approach we have used MCMC to generate samples. We have used the output ridge line from the above method as input(first sample)
         to this second approach. We have taken first sample and select the s_i value in it which corresponds to highest point of our
