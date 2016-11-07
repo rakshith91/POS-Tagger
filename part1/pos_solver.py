@@ -37,7 +37,7 @@ The transitions calculate P(s_i | S_i-1) and P(s_i | s_i-2) for all possible pos
 The simple_posterior function calculates the log of posterior probabilty for each word. 
 The read_data function reads the data. It is directly taken from label.py written by David Crandall. 
 The train function trains the data. train_vals is a global variable in which training information is stored. If train_vals is 0 , the training is done again. 
-The posterior function gives the marginals for a sentence. 
+The posterior function gives the marginals for a sentence. P(S1,S2,S3,....Sn | W1,W2,....Wn)
 
 3)Problems, assumptions, simplifications, design decisions:
 
@@ -46,7 +46,10 @@ Scenario 1) Word not present in train data :
 	In the other two models, the likelihood for all parts of speech is considered same . i.e. 10 **-9
 
 Scenario 2) Transition probabilty not present:
-	This doesn't apply to the simplified model. In the other two models, its taken to be 10**-12. 
+	This doesn't apply to the simplified model. In the other two models, its taken to be 10**-12.
+
+For simplification, we have used no transition probability in calculating the posterior. i.e. P(S1...Sn | W1...Wn) 
+= ProductOf(P(w_i | s_i)*P(s_i)) = sum(log(P(w_i | s_i)*P(s_i))) 
 
 Results : The word accuracy in all the three models is above 90% . Overall for a corpus of 2000 sentences( bc.test), the program takes about 25-30 seconds. 
 '''
@@ -66,8 +69,12 @@ class Solver:
 	# Calculate the log of the posterior probability of a given sentence
 	#  with a given part-of-speech labeling
 	def posterior(self, sentence, label):
-		
-		return Solver.posteriors
+		post=0.0
+		exemplars, tr, second_tr, priors, pos_occurences, total_word_count, likelihood = Solver.train_vals
+		for word in sentence:
+			for pos in label:
+				post += math.log(likelihood.get((word,pos), 0.000000001)*pos_occurences[pos])
+		return post
 	
 	def train(self, data):	
 		if Solver.train_vals!=0:
