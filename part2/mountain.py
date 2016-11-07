@@ -15,7 +15,9 @@ NOTE:- In some images the red,blue and green line overlap on each other and ulti
     We need to compute P(s_i|w_i)
     Note: Denominators gets cancel as this problem deals with comparision between points on the image 
     Emission prob -  strength of point - P(w_i|s_i)
-    Transition prob - closeness of the current point to the previous point - P(s_(i-1)|s_i). P(s_i|s_(i-1),w_i) = P(s_(i-1)|s_i) * P(w_i|s_i) * P(s_i)
+    Transition prob - closeness of the current point to the previous point - P(s_(i-1)|s_i). We also tried the proportionality of their edge 
+    strength but its result were not good.
+    P(s_i|s_(i-1),w_i) = P(s_(i-1)|s_i) * P(w_i|s_i) * P(s_i)
 (2) How our program works:
     We have implemented three approaches:-
     1. In this approach we assume that every s_i value depends on only one w_i value i.e., it depends on the column vector it is present in.
@@ -27,14 +29,20 @@ NOTE:- In some images the red,blue and green line overlap on each other and ulti
         We do this by calculating a combination of transition and emission probabilites for every cell in that column and find the best
         value in that column. Thus we find the best value for that column and move to the next column and do the same for the column and so on.
         Once we are done with adjusting  s_x values for all the columns we consider that as our new sample. In this way we generate
-        a lot of samples and at the end choose the best sample out of it.
+        a lot of samples and at the end choose the best sample out of it, according to gibbs sampling the distribution converges 
+        to the actual distribution with more samples.
     3.  In the previous section we used to start with a random initial point choosen from the first ridge line.
         But here we have some human input. So, we consider the s_i value situated in the next column as our initial point and try to
         start generating samples from there. As now we surely know a point which is on the ridge line, we give higher weights for the
         transition probabilities as we know that the next point would be close to the previous point and so on.
-
+    Design Decisions:
+    1.  We have added appropriate weights to points near the top of the image as moutain ranges are most probable to occur at the top of
+        the image.
+    2.  Suitable weights for emission and transition probabity has been chosen.
+    3.  Found that increasing samples beyond 10000 didn't improved the ridge line.
+    4.  To avoid zero probability, emision probability having very small values are provided with minimum threshold value.
 3) Problems we faced:
-    1. Coming up with a good combination of transmission and emission probabilites was a bit of challenge. And another challenge we faced was when
+    1. Coming up with a good combination of transition and emission probabilites was a bit of challenge. And another challenge we faced was when
     there are some other objects in the image which closely resemble a mountain range, like a chain of trees. In such cases the pixels on the
     trees were being considered into the ridge line as tree pixels have higher gradient and so higher emission probabilities. To counter this
     issue we have included a heuristic height factor which gives higher heuristic value for points which are on higher altitudes when compared
