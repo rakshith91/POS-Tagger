@@ -220,6 +220,6 @@ imsave(output_filename, draw_edge(input_image, ridge, (255, 0, 0), 5))
 sample = plot_blue_line(edge_strength_value,ridge);
 imsave(output_filename, draw_edge(input_image, sample[-1], (0, 0, 255), 5))
 
-sample = plot_green_line(edge_strength_value, ridge,gt_row,gt_col);
+sample = plot_green_line(edge_strength_value, ridge,int(gt_row),int(gt_col));
 imsave(output_filename, draw_edge(input_image, sample[-1], (0, 255, 0), 5))
 
